@@ -31,27 +31,27 @@ CRON_PART: dict[int, CRON_TIME_PART] = {
 }
 
 
-def detect_operation(element: str) -> CRON_OPERATIONS:
+def detect_operation(field: str) -> CRON_OPERATIONS:
 
     operation = None
 
-    if element.startswith("*") and not element.startswith("*/"):
+    if field.startswith("*") and not field.startswith("*/"):
         operation = "all_items"
 
-    elif element.startswith("*/"):
+    elif field.startswith("*/"):
         operation = "wild_card_with_step_value"
 
-    elif "," in element:
+    elif "," in field:
         operation = "list"
 
-    elif "-" in element:
+    elif "-" in field:
         operation = "range"
 
-    elif element.isdigit():
+    elif field.isdigit():
         operation = "single_value"
 
     else:
-        raise ValueError(f"Invalid element: {element}")
+        raise ValueError(f"Invalid operation: {field}")
 
     return operation
 
@@ -94,24 +94,24 @@ def process_cron_expression(expression: str) -> str:
     split_cron = expression.split()
 
     if len(split_cron) != 5:
-        raise ValueError("Cron expression must contain 5 elements")
+        raise ValueError("Cron expression must contain 5 fields")
 
     result: list[str] = []
 
     for i in range(len(split_cron)):
         part = CRON_PART[i]
-        cron_element = split_cron[i]
+        cron_field = split_cron[i]
 
-        operation = detect_operation(cron_element)
+        operation = detect_operation(cron_field)
 
         if operation == "all_items":
             val = generate_values(part, operation)
 
         elif operation == "wild_card_with_step_value":
-            val = generate_values(part, operation, cron_element[2:])
+            val = generate_values(part, operation, cron_field[2:])
 
         else:
-            val = generate_values(part, operation, cron_element)
+            val = generate_values(part, operation, cron_field)
 
         result.append(f"{part:<14}{' '.join(map(str, val))}")
 

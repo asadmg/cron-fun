@@ -10,20 +10,20 @@ class TestExceptions:
 
         invalid_exp = "*/10 * 10-20 2,5,12"
 
-        with pytest.raises(ValueError, match="Cron expression must contain 5 elements"):
+        with pytest.raises(ValueError, match="Cron expression must contain 5 fields"):
             process_cron_expression(invalid_exp)
 
-    def test_invalid_element(self) -> None:
+    def test_invalid_operation(self) -> None:
 
-        invalid_element = "xyz"
+        invalid_field = "xyz"
 
-        with pytest.raises(ValueError, match="Invalid element"):
-            detect_operation(invalid_element)
+        with pytest.raises(ValueError, match="Invalid operation"):
+            detect_operation(invalid_field)
 
 
 class TestOperationDetection:
     @pytest.mark.parametrize(
-        "element, operation",
+        "field, operation",
         [
             ("*", "all_items"),
             ("*/15", "wild_card_with_step_value"),
@@ -33,9 +33,9 @@ class TestOperationDetection:
         ],
     )
     def test_cron_operation_detection(
-        self, element: str, operation: CRON_OPERATIONS
+        self, field: str, operation: CRON_OPERATIONS
     ) -> None:
-        result = detect_operation(element)
+        result = detect_operation(field)
         assert result == operation
 
 
