@@ -56,6 +56,84 @@ def detect_operation(field: str) -> CRON_OPERATIONS:
     return operation
 
 
+def validate_field(
+    cron_part_type: CRON_TIME_PART, operation: CRON_OPERATIONS, value: str | None = None
+) -> None:
+
+    if operation == "wild_card_with_step_value":
+        # assert for runtime safety and to satisfy the type checker
+        assert value is not None, "value is required for wild_card_with_step_value"
+
+        if not (
+                int(value) >= MIN_VALUE[cron_part_type]
+                and int(value) <= MAX_VALUE[cron_part_type]
+        ):
+            raise ValueError(
+                f"For field type '{cron_part_type}' with operation '{operation}', the value must be between {MIN_VALUE[cron_part_type] + 1} and {MAX_VALUE[cron_part_type]}"
+            )
+
+    elif operation == "range":
+        # assert for runtime safety and to satisfy the type checker
+        assert value is not None, "value is required for range"
+
+        # check if negative value provided
+        if value.startswith("-") or value.endswith("-"):
+            raise ValueError(
+                f"Invalid value provided for field type '{cron_part_type}' with operation '{operation}'"
+            )
+
+        lower_bound, upper_bound = map(int, value.split("-"))
+
+        if lower_bound > upper_bound:
+            raise ValueError(
+                f"For field type '{cron_part_type}' with operation '{operation}', the lower value must be smaller or equal to the upper value"
+            )
+
+        if not (
+            lower_bound >= MIN_VALUE[cron_part_type]
+            and lower_bound <= MAX_VALUE[cron_part_type]
+        ):
+            raise ValueError(
+                f"For field type '{cron_part_type}' with operation '{operation}', the lower value must be between {MIN_VALUE[cron_part_type]} and {MAX_VALUE[cron_part_type]}"
+            )
+
+        if not (
+            upper_bound >= MIN_VALUE[cron_part_type]
+            and upper_bound <= MAX_VALUE[cron_part_type]
+        ):
+            raise ValueError(
+                f"For field type '{cron_part_type}' with operation '{operation}', the upper value must be between {MIN_VALUE[cron_part_type]} and {MAX_VALUE[cron_part_type]}"
+            )
+
+    elif operation == "list":
+        # assert for runtime safety and to satisfy the type checker
+        assert value is not None, "value is required for list"
+        values = [
+            i
+            for i in value.split(",")
+            if not (
+                int(i) >= MIN_VALUE[cron_part_type]
+                and int(i) <= MAX_VALUE[cron_part_type]
+            )
+        ]
+        if values:
+            raise ValueError(
+                f"For field type '{cron_part_type}' with operation '{operation}', the value must be between {MIN_VALUE[cron_part_type]} and {MAX_VALUE[cron_part_type]}"
+            )
+
+    elif operation == "single_value":
+        # assert for runtime safety and to satisfy the type checker
+        assert value is not None, "value is required for single_value"
+
+        if not (
+            int(value) >= MIN_VALUE[cron_part_type]
+            and int(value) <= MAX_VALUE[cron_part_type]
+        ):
+            raise ValueError(
+                f"For field type '{cron_part_type}' with operation '{operation}', the value must be between {MIN_VALUE[cron_part_type]} and {MAX_VALUE[cron_part_type]}"
+            )
+
+
 def generate_values(
     cron_part_type: CRON_TIME_PART, operation: CRON_OPERATIONS, value: str | None = None
 ) -> list[int]:
@@ -73,8 +151,8 @@ def generate_values(
     elif operation == "range":
         # assert for runtime safety and to satisfy the type checker
         assert value is not None, "value is required for range"
-        lower_bound, upper_bound = value.split("-")
-        values = list(range(int(lower_bound), int(upper_bound) + 1))
+        lower_bound, upper_bound = map(int, value.split("-"))
+        values = list(range(lower_bound, upper_bound + 1))
 
     elif operation == "list":
         # assert for runtime safety and to satisfy the type checker
@@ -108,9 +186,11 @@ def process_cron_expression(expression: str) -> str:
             val = generate_values(part, operation)
 
         elif operation == "wild_card_with_step_value":
+            validate_field(part, operation, cron_field[2:])
             val = generate_values(part, operation, cron_field[2:])
 
         else:
+            validate_field(part, operation, cron_field)
             val = generate_values(part, operation, cron_field)
 
         result.append(f"{part:<14}{' '.join(map(str, val))}")

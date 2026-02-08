@@ -1,7 +1,12 @@
 import pytest
 from textwrap import dedent
 
-from src.cron import detect_operation, generate_values, process_cron_expression
+from src.cron import (
+    detect_operation,
+    generate_values,
+    process_cron_expression,
+    validate_field,
+)
 from src.cron import CRON_OPERATIONS, CRON_TIME_PART
 
 
@@ -59,6 +64,55 @@ class TestValueGeneration:
     ) -> None:
         result = generate_values(cron_part, operation, value)
         assert result == expected
+
+
+class TestFieldValidation:
+    @pytest.mark.parametrize(
+        "cron_part, operation, value",
+        [
+            ("minute", "wild_card_with_step_value", "15"),
+            ("day_of_week", "range", "1-5"),
+            ("day_of_month", "list", "1,15"),
+            ("hour", "single_value", "12"),
+            ("minute", "single_value", "0"),
+        ],
+    )
+    def test_valid_fields(
+        self,
+        cron_part: CRON_TIME_PART,
+        operation: CRON_OPERATIONS,
+        value: str,
+    ) -> None:
+        # Should not raise any exception for valid inputs
+        validate_field(cron_part, operation, value)
+
+    @pytest.mark.parametrize(
+        "cron_part, operation, value",
+        [
+            ("minute", "wild_card_with_step_value", "-1"),
+            ("minute", "wild_card_with_step_value", "77"),
+            ("hour", "range", "-5-7"),
+            ("hour", "range", "-5-7-"),
+            ("day_of_week", "range", "-4"),
+            ("day_of_week", "range", "4-"),
+            ("day_of_week", "range", "6-2"),
+            ("month", "range", "10-20"),
+            ("month", "range", "15-25"),
+            ("day_of_month", "list", "15,35"),
+            ("day_of_month", "list", "-15,20"),
+            ("hour", "single_value", "-1"),
+            ("hour", "single_value", "60"),
+            ("month", "single_value", "-1"),
+        ],
+    )
+    def test_invalid_fields(
+        self,
+        cron_part: CRON_TIME_PART,
+        operation: CRON_OPERATIONS,
+        value: str,
+    ) -> None:
+        with pytest.raises(ValueError):
+            validate_field(cron_part, operation, value)
 
 
 class TestCronExpressionProcessing:
