@@ -1,3 +1,5 @@
+import argparse
+import sys
 from typing import Literal
 
 type CRON_OPERATIONS = Literal[
@@ -64,29 +66,31 @@ def validate_field(
         # assert for runtime safety and to satisfy the type checker
         assert value is not None, "value is required for wild_card_with_step_value"
 
+        value_int = int(value)
+
         if not (
-                int(value) >= MIN_VALUE[cron_part_type]
-                and int(value) <= MAX_VALUE[cron_part_type]
+            value_int >= MIN_VALUE[cron_part_type]
+            and value_int <= MAX_VALUE[cron_part_type]
         ):
             raise ValueError(
-                f"For field type '{cron_part_type}' with operation '{operation}', the value must be between {MIN_VALUE[cron_part_type] + 1} and {MAX_VALUE[cron_part_type]}"
+                f"For field '{cron_part_type}' with operation '{operation}', the value must be between {MIN_VALUE[cron_part_type] + 1} and {MAX_VALUE[cron_part_type]}"
             )
 
     elif operation == "range":
         # assert for runtime safety and to satisfy the type checker
         assert value is not None, "value is required for range"
 
-        # check if negative value provided
-        if value.startswith("-") or value.endswith("-"):
+        # check for malformed range format
+        if value.startswith("-") or value.endswith("-") or value.count("-") != 1:
             raise ValueError(
-                f"Invalid value provided for field type '{cron_part_type}' with operation '{operation}'"
+                f"Malformed range format in field '{cron_part_type}' with operation '{operation}'"
             )
 
         lower_bound, upper_bound = map(int, value.split("-"))
 
         if lower_bound > upper_bound:
             raise ValueError(
-                f"For field type '{cron_part_type}' with operation '{operation}', the lower value must be smaller or equal to the upper value"
+                f"For field '{cron_part_type}' with operation '{operation}', the lower value must be smaller or equal to the upper value"
             )
 
         if not (
@@ -94,7 +98,7 @@ def validate_field(
             and lower_bound <= MAX_VALUE[cron_part_type]
         ):
             raise ValueError(
-                f"For field type '{cron_part_type}' with operation '{operation}', the lower value must be between {MIN_VALUE[cron_part_type]} and {MAX_VALUE[cron_part_type]}"
+                f"For field '{cron_part_type}' with operation '{operation}', the lower value must be between {MIN_VALUE[cron_part_type]} and {MAX_VALUE[cron_part_type]}"
             )
 
         if not (
@@ -102,35 +106,31 @@ def validate_field(
             and upper_bound <= MAX_VALUE[cron_part_type]
         ):
             raise ValueError(
-                f"For field type '{cron_part_type}' with operation '{operation}', the upper value must be between {MIN_VALUE[cron_part_type]} and {MAX_VALUE[cron_part_type]}"
+                f"For field '{cron_part_type}' with operation '{operation}', the upper value must be between {MIN_VALUE[cron_part_type]} and {MAX_VALUE[cron_part_type]}"
             )
 
     elif operation == "list":
         # assert for runtime safety and to satisfy the type checker
         assert value is not None, "value is required for list"
-        values = [
-            i
-            for i in value.split(",")
-            if not (
-                int(i) >= MIN_VALUE[cron_part_type]
-                and int(i) <= MAX_VALUE[cron_part_type]
-            )
-        ]
-        if values:
-            raise ValueError(
-                f"For field type '{cron_part_type}' with operation '{operation}', the value must be between {MIN_VALUE[cron_part_type]} and {MAX_VALUE[cron_part_type]}"
-            )
+
+        for i in map(int, value.split(",")):
+            if not (i >= MIN_VALUE[cron_part_type] and i <= MAX_VALUE[cron_part_type]):
+                raise ValueError(
+                    f"For field '{cron_part_type}' with operation '{operation}', the value must be between {MIN_VALUE[cron_part_type]} and {MAX_VALUE[cron_part_type]}"
+                )
 
     elif operation == "single_value":
         # assert for runtime safety and to satisfy the type checker
         assert value is not None, "value is required for single_value"
 
+        value_int = int(value)
+
         if not (
-            int(value) >= MIN_VALUE[cron_part_type]
-            and int(value) <= MAX_VALUE[cron_part_type]
+            value_int >= MIN_VALUE[cron_part_type]
+            and value_int <= MAX_VALUE[cron_part_type]
         ):
             raise ValueError(
-                f"For field type '{cron_part_type}' with operation '{operation}', the value must be between {MIN_VALUE[cron_part_type]} and {MAX_VALUE[cron_part_type]}"
+                f"For field '{cron_part_type}' with operation '{operation}', the value must be between {MIN_VALUE[cron_part_type]} and {MAX_VALUE[cron_part_type]}"
             )
 
 
@@ -199,8 +199,6 @@ def process_cron_expression(expression: str) -> str:
 
 
 if __name__ == "__main__":
-    import argparse
-
     parser = argparse.ArgumentParser(description="Parse cron expression")
     parser.add_argument(
         "-e",
@@ -212,6 +210,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    parsed_exp = process_cron_expression(args.expression)
-
-    print(parsed_exp)
+    try:
+        parsed_exp = process_cron_expression(args.expression)
+        print(parsed_exp)
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)

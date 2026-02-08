@@ -96,6 +96,7 @@ class TestFieldValidation:
             ("day_of_week", "range", "-4"),
             ("day_of_week", "range", "4-"),
             ("day_of_week", "range", "6-2"),
+            ("day_of_week", "range", "6--2"),
             ("month", "range", "10-20"),
             ("month", "range", "15-25"),
             ("day_of_month", "list", "15,35"),
